@@ -1,0 +1,64 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: ashley-cd
+  labels:
+    net.beedemo.deploy.type: workshop
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: ashley-cd
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: ashley-cd-staging
+  labels:
+    net.beedemo.deploy.type: workshop
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: ashley-cd
+      labels:
+        net.beedemo.deploy.type: workshop
+        app: ashley-cd
+        env: staging
+    spec:
+      serviceAccountName: cjoc
+      containers:
+      - name: ashley-cd
+        image: gcr.io/core-workshop/helloworld-nodejs:ashley-cd-4
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "50m"
+        imagePullPolicy: Always
+        ports:
+        - name: public
+          containerPort: 8080
+      securityContext:
+        runAsUser: 1000
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ashley-cd
+  labels:
+    net.beedemo.deploy.type: workshop
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /ashley-cd/?(.*)
+        backend:
+          serviceName: ashley-cd
+          servicePort: 80
+    host: staging.cb-sa.io
